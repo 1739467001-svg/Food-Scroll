@@ -1,0 +1,67 @@
+# ==========================================
+# Docker Compose - 开发环境配置
+# 生产环境请使用 docker-compose.prod.yml
+# ==========================================
+
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: food-menu-backend
+    restart: unless-stopped
+    ports:
+      - "3001:3001"
+    volumes:
+      # 数据持久化（SQLite 数据库）
+      - ./data:/app/data
+      # 上传文件持久化
+      - ./uploads:/app/uploads
+      # 日志
+      - ./logs/backend:/app/logs
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET:-change-this-secret-in-production}
+      - DB_PATH=/app/data/database.sqlite
+      - UPLOAD_PATH=/app/uploads
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    networks:
+      - food-menu-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        - VITE_API_URL=/api
+    container_name: food-menu-frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - food-menu-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+networks:
+  food-menu-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

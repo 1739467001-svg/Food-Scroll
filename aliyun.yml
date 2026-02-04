@@ -1,0 +1,106 @@
+# ==========================================
+# 阿里云容器服务 ACK 配置
+# 适用于: 阿里云 Kubernetes 集群
+# ==========================================
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: food-menu-backend
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: food-menu-backend
+  template:
+    metadata:
+      labels:
+        app: food-menu-backend
+    spec:
+      containers:
+      - name: backend
+        image: registry.cn-hangzhou.aliyuncs.com/your-namespace/food-menu-backend:latest
+        ports:
+        - containerPort: 3001
+        env:
+        - name: NODE_ENV
+          value: "production"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: food-menu-secrets
+              key: jwt-secret
+        - name: DB_PATH
+          value: "/app/data/database.sqlite"
+        volumeMounts:
+        - name: data-volume
+          mountPath: /app/data
+        - name: uploads-volume
+          mountPath: /app/uploads
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 3001
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: food-menu-data-pvc
+      - name: uploads-volume
+        persistentVolumeClaim:
+          claimName: food-menu-uploads-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: food-menu-backend-service
+  namespace: default
+spec:
+  selector:
+    app: food-menu-backend
+  ports:
+  - port: 3001
+    targetPort: 3001
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: food-menu-frontend
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: food-menu-frontend
+  template:
+    metadata:
+      labels:
+        app: food-menu-frontend
+    spec:
+      containers:
+      - name: frontend
+        image: registry.cn-hangzhou.aliyuncs.com/your-namespace/food-menu-frontend:latest
+        ports:
+        - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: food-menu-frontend-service
+  namespace: default
+spec:
+  selector:
+    app: food-menu-frontend
+  ports:
+  - port: 80
+    targetPort: 80
+  type: LoadBalancer

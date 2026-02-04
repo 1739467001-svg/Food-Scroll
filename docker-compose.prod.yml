@@ -1,0 +1,92 @@
+# ==========================================
+# Docker Compose - 生产环境配置
+# 适用于: 阿里云, 腾讯云, 自建服务器
+# ==========================================
+
+version: '3.8'
+
+services:
+  backend:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-yourname/food-menu}/backend:latest
+    container_name: food-menu-backend
+    restart: always
+    deploy:
+      replicas: 1
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+    volumes:
+      - food-menu-data:/app/data
+      - food-menu-uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_PATH=/app/data/database.sqlite
+      - UPLOAD_PATH=/app/uploads
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+    networks:
+      - food-menu-network
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    image: ${REGISTRY:-ghcr.io}/${IMAGE_NAME:-yourname/food-menu}/frontend:latest
+    container_name: food-menu-frontend
+    restart: always
+    deploy:
+      replicas: 1
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - food-menu-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # 可选: 自动更新
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_POLL_INTERVAL=3600
+      - WATCHTOWER_INCLUDE_STOPPED=true
+      - WATCHTOWER_REVIVE_STOPPED=true
+      - WATCHTOWER_NOTIFICATIONS=shoutrrr
+      - WATCHTOWER_NOTIFICATION_URL=${WATCHTOWER_NOTIFICATION_URL}
+    command: --interval 3600 food-menu-backend food-menu-frontend
+    profiles:
+      - auto-update
+
+networks:
+  food-menu-network:
+    driver: bridge
+
+volumes:
+  food-menu-data:
+    driver: local
+  food-menu-uploads:
+    driver: local

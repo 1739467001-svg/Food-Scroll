@@ -1,0 +1,49 @@
+# ==========================================
+# Zeabur 平台配置文件
+# Zeabur: https://zeabur.com
+# 特点: 无状态容器, 自动 HTTPS, 按量付费
+# ==========================================
+
+version: '3.8'
+
+# Zeabur 使用特定的构建配置
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    ports:
+      - "3001"
+    volumes:
+      # Zeabur 支持持久化卷
+      - zeabur-data:/app/data
+      - zeabur-uploads:/app/uploads
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - JWT_SECRET=${JWT_SECRET}
+      - DB_PATH=/app/data/database.sqlite
+      - UPLOAD_PATH=/app/uploads
+      # Zeabur 自动分配域名
+      - CORS_ORIGIN=${ZEABUR_WEB_DOMAIN}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        # Zeabur 自动注入域名
+        - VITE_API_URL=${ZEABUR_BACKEND_URL}/api
+    ports:
+      - "80"
+    depends_on:
+      - backend
+
+volumes:
+  zeabur-data:
+  zeabur-uploads:

@@ -1,0 +1,42 @@
+# ==========================================
+# Fly.io 配置文件
+# https://fly.io
+# ==========================================
+
+app = "food-menu-pro"
+primary_region = "sin"  # 新加坡节点，可改为 hkg（香港）
+
+[build]
+  dockerfile = "Dockerfile.backend"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3001"
+  DB_PATH = "/data/database.sqlite"
+  UPLOAD_PATH = "/uploads"
+
+[http_service]
+  internal_port = 3001
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ["app"]
+
+[[mounts]]
+  source = "food_menu_data"
+  destination = "/data"
+
+[[mounts]]
+  source = "food_menu_uploads"
+  destination = "/uploads"
+
+[checks]
+  [checks.health]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    path = "/health"
+    port = 3001
+    timeout = "5s"
+    type = "http"

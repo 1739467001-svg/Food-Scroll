@@ -1,0 +1,49 @@
+# ==========================================
+# 前端 Dockerfile - 多阶段构建
+# 兼容: 阿里云, 腾讯云, GitHub, Zeabur 等
+# ==========================================
+
+# 阶段 1: 构建
+FROM node:18-alpine AS builder
+
+WORKDIR /app
+
+# 安装依赖
+COPY frontend/package*.json ./
+RUN npm ci && npm cache clean --force
+
+# 复制源码
+COPY frontend/ ./
+
+# 构建（支持环境变量注入）
+ARG VITE_API_URL
+ENV VITE_API_URL=${VITE_API_URL:-/api}
+
+RUN npm run build
+
+# 阶段 2: 生产环境
+FROM nginx:alpine
+
+# 安装安全更新
+RUN apk upgrade --no-cache
+
+# 复制构建产物
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# 复制 Nginx 配置
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+
+# 创建缓存目录并设置权限
+RUN mkdir -p /var/cache/nginx /var/run && \
+    chmod -R 755 /var/cache/nginx /var/run
+
+# 健康检查
+HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+  CMD wget --no-verbose --tries=1 --spider http://localhost/ || exit 1
+
+EXPOSE 80
+
+# 使用 nginx 用户运行（安全）
+USER nginx
+
+CMD ["nginx", "-g", "daemon off;"]

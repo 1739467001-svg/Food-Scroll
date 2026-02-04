@@ -1,0 +1,89 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-china-beige text-china-ink font-serif;
+  }
+}
+
+@layer components {
+  .china-btn-primary {
+    @apply px-6 py-3 bg-gradient-to-r from-china-red to-china-red-dark text-white 
+           rounded-china font-semibold shadow-china hover:shadow-china-lg 
+           hover:-translate-y-0.5 transition-all duration-300;
+  }
+  
+  .china-btn-secondary {
+    @apply px-6 py-3 bg-white border-2 border-china-gold text-china-ink 
+           rounded-china font-semibold hover:bg-china-gold-light 
+           transition-all duration-300;
+  }
+  
+  .china-card {
+    @apply bg-gradient-china-card border border-china-gold-light 
+           rounded-china-lg shadow-china;
+  }
+  
+  .china-input {
+    @apply w-full px-4 py-3 bg-white border-2 border-china-gold-light 
+           rounded-china focus:border-china-gold focus:outline-none 
+           transition-colors duration-300;
+  }
+  
+  .corner-decoration {
+    @apply absolute w-5 h-5 border-2 border-china-gold;
+  }
+  
+  .corner-tl {
+    @apply corner-decoration top-2 left-2 border-r-0 border-b-0;
+  }
+  
+  .corner-tr {
+    @apply corner-decoration top-2 right-2 border-l-0 border-b-0;
+  }
+  
+  .corner-bl {
+    @apply corner-decoration bottom-2 left-2 border-r-0 border-t-0;
+  }
+  
+  .corner-br {
+    @apply corner-decoration bottom-2 right-2 border-l-0 border-t-0;
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f7f3e9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4af37;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #b8941f;
+}
+
+/* Animations */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.6s ease forwards;
+}
