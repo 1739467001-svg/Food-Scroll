@@ -62,8 +62,8 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-        'china-header': 'linear-gradient(180deg, #8b1a1a 0%, #6b1414 100%)',
-        'china-card': 'linear-gradient(135deg, #fffdf9, #f7f3e9)',
+        'gradient-china-header': 'linear-gradient(180deg, #8b1a1a 0%, #6b1414 100%)',
+        'gradient-china-card': 'linear-gradient(135deg, #fffdf9, #f7f3e9)',
       },
     },
   },

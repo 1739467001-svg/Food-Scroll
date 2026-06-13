@@ -11,7 +11,7 @@ import MenuShowcase from './pages/MenuShowcase'
 function App() {
   return (
     <AuthProvider>
-      <Router>
+      <Router basename={import.meta.env.BASE_URL.replace(/\/$/, '')}>
         <div className="min-h-screen bg-china-beige">
           <Routes>
             {/* Public Routes */}

@@ -2,6 +2,24 @@ import { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { Search, Phone, MapPin, Clock, ChevronUp, Menu } from 'lucide-react';
 import { useBreakpoint } from '../hooks/useMediaQuery';
+import { demoMenu, demoCategories } from '../data/demoData';
+
+// 静态资源基地址：用于拼接后端上传的相对图片路径（如 /uploads/xxx.jpg）。
+// 通过 VITE_ASSET_URL 注入，未配置时回退为同源（空字符串），不再写死 localhost。
+const ASSET_BASE = import.meta.env.VITE_ASSET_URL || '';
+
+// 演示模式：构建时设置 VITE_DEMO_MODE=true（如 GitHub Pages 部署）会跳过后端请求，
+// 直接使用内置演示数据。即便未开启，API 请求失败时也会自动回退到演示数据。
+const DEMO_MODE = import.meta.env.VITE_DEMO_MODE === 'true';
+
+// 将菜品图片路径解析为可访问的完整 URL：
+// - 完整 http(s) 链接（如演示数据/外部图床）原样返回
+// - 后端相对路径拼接 ASSET_BASE
+export const resolveImage = (image) => {
+  if (!image) return null;
+  if (/^https?:\/\//.test(image)) return image;
+  return `${ASSET_BASE}${image}`;
+};
 
 const MenuShowcase = () => {
   const [menuData, setMenuData] = useState([]);
@@ -11,7 +29,8 @@ const MenuShowcase = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  
+  const [isDemo, setIsDemo] = useState(false);
+
   const categoryRefs = useRef({});
   const { isMobile, isTablet } = useBreakpoint();
 
@@ -26,16 +45,35 @@ const MenuShowcase = () => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const useDemoData = () => {
+    setMenuData(demoMenu);
+    setCategories(demoCategories);
+    setIsDemo(true);
+  };
+
   const fetchMenu = async () => {
+    // 演示模式直接使用内置数据，不发起网络请求
+    if (DEMO_MODE) {
+      useDemoData();
+      setLoading(false);
+      return;
+    }
+
     try {
       const [menuRes, catsRes] = await Promise.all([
         axios.get('/api/menu'),
         axios.get('/api/categories')
       ]);
-      setMenuData(menuRes.data);
-      setCategories(catsRes.data);
+      // 后端在线但还没有任何菜品时，同样回退到演示数据以保证页面不空白
+      if (Array.isArray(menuRes.data) && menuRes.data.some(c => c.dishes?.length)) {
+        setMenuData(menuRes.data);
+        setCategories(catsRes.data);
+      } else {
+        useDemoData();
+      }
     } catch (err) {
-      console.error('Failed to fetch menu:', err);
+      console.error('Failed to fetch menu, falling back to demo data:', err);
+      useDemoData();
     } finally {
       setLoading(false);
     }
@@ -115,6 +153,12 @@ const MenuShowcase = () => {
           
           <h1 className="font-calligraphy text-4xl md:text-5xl lg:text-6xl mb-3 md:mb-4">鼎味轩</h1>
           <p className="text-china-gold text-xs md:text-sm tracking-[0.3em] md:tracking-[0.5em] mb-4 md:mb-6">SINCE 1920</p>
+
+          {isDemo && (
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 mb-2 rounded-full bg-china-gold/20 border border-china-gold/40 text-china-gold text-xs">
+              <span>🪧</span> 演示模式 · 展示内置示例菜单
+            </div>
+          )}
           
           <div className="flex items-center justify-center gap-3 md:gap-4 mb-4 md:mb-6">
             <div className="h-px w-12 md:w-16 bg-gradient-to-r from-transparent to-china-gold" />
@@ -280,13 +324,34 @@ const MenuShowcase = () => {
 
       {/* Admin Link */}
       <a
-        href="/login"
+        href={`${import.meta.env.BASE_URL}login`}
         className="fixed bottom-6 left-6 w-10 h-10 md:w-12 md:h-12 bg-china-gold text-white rounded-full shadow-lg flex items-center justify-center hover:bg-china-gold-dark transition-colors z-40"
         title="管理员入口"
       >
         <span className="text-base md:text-lg">🔐</span>
       </a>
     </div>
+  );
+};
+
+// Dish Image Component
+// 负责解析图片地址，并在加载失败时优雅回退到 emoji 占位（避免出现破图）。
+const DishImage = ({ image, alt, className, fallbackClassName }) => {
+  const [failed, setFailed] = useState(false);
+  const src = resolveImage(image);
+
+  if (!src || failed) {
+    return <div className={fallbackClassName}>🍽️</div>;
+  }
+
+  return (
+    <img
+      src={src}
+      alt={alt}
+      loading="lazy"
+      className={className}
+      onError={() => setFailed(true)}
+    />
   );
 };
 
@@ -301,17 +366,12 @@ const DishCard = ({ dish, category, isMobile }) => (
     <div className={`flex gap-4 md:gap-6 ${isMobile ? 'flex-col' : ''}`}>
       {/* Image */}
       <div className={`${isMobile ? 'w-full h-40' : 'w-24 h-24 md:w-32 md:h-32'} bg-china-beige rounded-china flex-shrink-0 overflow-hidden border-2 border-china-gold-light`}>
-        {dish.image ? (
-          <img
-            src={`http://localhost:3001${dish.image}`}
-            alt={dish.name}
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
-          />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-4xl md:text-5xl">
-            🍽️
-          </div>
-        )}
+        <DishImage
+          image={dish.image}
+          alt={dish.name}
+          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+          fallbackClassName="w-full h-full flex items-center justify-center text-4xl md:text-5xl"
+        />
       </div>
       
       {/* Content */}
@@ -360,11 +420,12 @@ const SearchResultCard = ({ dish }) => (
     
     <div className="flex gap-4">
       <div className="w-20 h-20 bg-china-beige rounded-china flex-shrink-0 overflow-hidden">
-        {dish.image ? (
-          <img src={`http://localhost:3001${dish.image}`} alt={dish.name} className="w-full h-full object-cover" />
-        ) : (
-          <div className="w-full h-full flex items-center justify-center text-2xl">🍽️</div>
-        )}
+        <DishImage
+          image={dish.image}
+          alt={dish.name}
+          className="w-full h-full object-cover"
+          fallbackClassName="w-full h-full flex items-center justify-center text-2xl"
+        />
       </div>
       
       <div className="flex-1 min-w-0">

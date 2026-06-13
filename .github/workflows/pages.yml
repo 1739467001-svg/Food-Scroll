@@ -1,0 +1,74 @@
+name: Deploy Demo to GitHub Pages
+
+# 将前端以"演示模式"构建为纯静态站点并发布到 GitHub Pages。
+# 演示模式下不依赖后端，使用内置示例菜单数据，方便在线预览。
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - claude/lucid-davinci-blo3v4
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/pages.yml'
+  workflow_dispatch:
+
+# GitHub Pages 部署所需权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 同一时间只允许一个部署，新的部署会取消进行中的旧部署
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build (demo mode)
+        env:
+          # GitHub Pages 项目站点的子路径：/<仓库名>/
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_DEMO_MODE: 'true'
+        run: npm run build
+
+      - name: Add SPA 404 fallback
+        # GitHub Pages 对未知路径返回 404.html；复制 index.html 使前端路由可处理深链接
+        run: cp dist/index.html dist/404.html
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: frontend/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
