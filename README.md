@@ -4,7 +4,7 @@
 
 ## 🌐 在线演示
 
-> **[👉 点击在线浏览菜单展示页](https://1739467001-svg.github.io/food-scroll/)**
+> **[👉 点击在线浏览菜单展示页](https://1739467001-svg.github.io/Food-Scroll/)**
 
 在线演示通过 GitHub Pages 托管，以**演示模式**运行（无需后端，使用内置示例菜单数据）。
 每次推送代码后由 `.github/workflows/pages.yml` 自动构建发布。
